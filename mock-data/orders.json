@@ -1,0 +1,41 @@
+{
+  "orders": [
+    {
+      "id": 1,
+      "userId": 1,
+      "total": 150.50,
+      "status": "completed",
+      "items": [
+        {"name": "Laptop", "price": 120.00, "quantity": 1},
+        {"name": "Mouse", "price": 30.50, "quantity": 1}
+      ],
+      "createdAt": "2024-01-15T10:30:00Z"
+    },
+    {
+      "id": 2,
+      "userId": 2,
+      "total": 89.99,
+      "status": "pending",
+      "items": [
+        {"name": "Keyboard", "price": 89.99, "quantity": 1}
+      ],
+      "createdAt": "2024-01-16T14:20:00Z"
+    },
+    {
+      "id": 3,
+      "userId": 1,
+      "total": 299.99,
+      "status": "shipped",
+      "items": [
+        {"name": "Monitor", "price": 299.99, "quantity": 1}
+      ],
+      "createdAt": "2024-01-17T09:15:00Z"
+    }
+  ],
+  "status": {
+    "service": "orders",
+    "healthy": true,
+    "version": "1.0.0",
+    "uptime": "24h"
+  }
+}

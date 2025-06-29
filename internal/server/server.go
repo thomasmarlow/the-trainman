@@ -8,11 +8,13 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/thomasmarlow/the-trainman/internal/config"
+	"github.com/thomasmarlow/the-trainman/internal/proxy"
 )
 
 type Server struct {
 	router        chi.Router
 	configManager *config.Manager
+	proxyHandler  *proxy.Handler
 }
 
 type PingResponse struct {
@@ -24,6 +26,7 @@ func NewServer(configManager *config.Manager) *Server {
 	s := &Server{
 		router:        chi.NewRouter(),
 		configManager: configManager,
+		proxyHandler:  proxy.NewHandler(configManager),
 	}
 
 	s.setupMiddleware()
@@ -40,6 +43,9 @@ func (s *Server) setupMiddleware() {
 
 func (s *Server) setupRoutes() {
 	s.router.Get("/ping", s.handlePing)
+	s.router.Route("/api/{service}", func(r chi.Router) {
+		r.HandleFunc("/*", s.proxyHandler.HandleProxy)
+	})
 }
 
 func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {

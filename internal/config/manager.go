@@ -11,7 +11,14 @@ import (
 )
 
 type Config struct {
-	Message string `yaml:"message"`
+	Message         string           `yaml:"message"`
+	BackendServices []BackendService `yaml:"backend_services"`
+}
+
+type BackendService struct {
+	Name    string `yaml:"name"`
+	URL     string `yaml:"url"`
+	Enabled bool   `yaml:"enabled"`
 }
 
 type Manager struct {
@@ -76,6 +83,25 @@ func (m *Manager) GetMessage() string {
 		return "pong"
 	}
 	return m.config.Message
+}
+
+func (m *Manager) GetBackendServices() []BackendService {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.config.BackendServices
+}
+
+func (m *Manager) GetBackendService(name string) (*BackendService, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	for _, service := range m.config.BackendServices {
+		if service.Name == name && service.Enabled {
+			return &service, true
+		}
+	}
+	return nil, false
 }
 
 func (m *Manager) StartWatching() error {

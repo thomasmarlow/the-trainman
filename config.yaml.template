@@ -4,16 +4,17 @@
 # Message displayed by the /ping endpoint
 message: "pong from config!"
 
+# Backend services configuration
+backend_services:
+  - name: "users"
+    url: "http://mock-users"
+    enabled: true
+  - name: "orders"
+    url: "http://mock-orders"
+    enabled: true
+
 # Future configuration options will be added here as we implement more stages
 # Examples:
-# 
-# backend_services:
-#   - name: "service1"
-#     url: "http://localhost:3001"
-#     path: "/api/v1/*"
-#   - name: "service2"
-#     url: "http://localhost:3002"
-#     path: "/api/v2/*"
 #
 # auth:
 #   api_keys:

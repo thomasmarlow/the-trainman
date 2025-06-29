@@ -14,3 +14,22 @@ services:
       retries: 3
       start_period: 40s
     restart: unless-stopped
+    depends_on:
+      - mock-users
+      - mock-orders
+
+  mock-users:
+    image: clue/json-server
+    ports:
+      - "3001:80"
+    volumes:
+      - ./mock-data/users.json:/data/db.json:ro
+    restart: unless-stopped
+
+  mock-orders:
+    image: clue/json-server
+    ports:
+      - "3002:80"
+    volumes:
+      - ./mock-data/orders.json:/data/db.json:ro
+    restart: unless-stopped
