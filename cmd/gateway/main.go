@@ -9,11 +9,23 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/tom/the-trainman/internal/server"
+	"github.com/thomasmarlow/the-trainman/internal/config"
+	"github.com/thomasmarlow/the-trainman/internal/server"
 )
 
 func main() {
-	srv := server.NewServer()
+	// initialize config manager
+	configManager, err := config.NewManager("config.yaml")
+	if err != nil {
+		log.Fatalf("failed to create config manager: %v", err)
+	}
+
+	// start config watching
+	if err := configManager.StartWatching(); err != nil {
+		log.Fatalf("failed to start config watching: %v", err)
+	}
+
+	srv := server.NewServer(configManager)
 
 	httpServer := &http.Server{
 		Addr:    ":8080",
@@ -39,6 +51,11 @@ func main() {
 	// graceful shutdown with timeout
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	// stop config manager
+	if err := configManager.Stop(); err != nil {
+		log.Printf("error stopping config manager: %v", err)
+	}
 
 	if err := httpServer.Shutdown(ctx); err != nil {
 		log.Fatalf("server forced to shutdown: %v", err)

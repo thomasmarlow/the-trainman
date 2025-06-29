@@ -2,7 +2,7 @@
 
 a minimal and extensible api gateway/reverse proxy built in go.
 
-## stage 1: basic api gateway with ping endpoint
+## stage 1: basic api gateway with ping endpoint ✅
 
 ### implemented features
 
@@ -14,23 +14,61 @@ a minimal and extensible api gateway/reverse proxy built in go.
 - ✅ graceful shutdown
 - ✅ request logging
 
+## stage 2: configuration with hot reload ✅
+
+### implemented features
+
+- ✅ yaml configuration system
+- ✅ hot reload with fsnotify
+- ✅ polling fallback mechanism for when fsnotify has issues (e.g., on mac)
+- ✅ thread-safe configuration access with sync.rwmutex
+- ✅ `/ping` endpoint now uses configurable message
+
 ### project structure
 
 ```
 the-trainman/
-├── cmd/gateway/main.go          # application entry point
-├── internal/server/server.go    # http server logic
+├── cmd/gateway/main.go          # application entry point + graceful shutdown
+├── internal/
+│   ├── config/manager.go        # hot reload config manager
+│   └── server/server.go         # http server + routing
+├── config.yaml.template         # configuration template
+├── config.yaml                  # yaml configuration (gitignored)
+├── Makefile                     # development commands
 ├── go.mod                       # go dependencies
 ├── Dockerfile                   # multi-stage docker image
-├── docker-compose.yml           # local orchestration
-└── .dockerignore               # build context optimization
+├── docker-compose.yml           # local orchestration with volume mount
+├── .gitignore                   # git exclusions
+└── .dockerignore                # build context optimization
 ```
 
 ### usage
 
-#### local development
+#### quick start with makefile
 
 ```bash
+# setup configuration and start the service
+make start
+
+# test the endpoint
+make test
+
+# view logs
+make logs
+
+# stop the service
+make stop
+
+# see all available commands
+make help
+```
+
+#### manual setup (alternative)
+
+```bash
+# create config from template
+cp config.yaml.template config.yaml
+
 # start the api gateway
 docker-compose up --build
 
@@ -38,16 +76,31 @@ docker-compose up --build
 curl http://localhost:8080/ping
 
 # expected response:
-# {"status":"ok","message":"pong"}
+# {"status":"ok","message":"pong from config!"}
 
 # stop the service
 docker-compose down
+```
+
+#### test hot reload
+
+```bash
+# with the container running, modify config.yaml
+echo 'message: "new config message!"' > config.yaml
+
+# test the endpoint again (should reflect the change)
+curl http://localhost:8080/ping
+
+# expected response:
+# {"status":"ok","message":"new config message!"}
 ```
 
 #### verify health check
 
 ```bash
 # check container status
+make health
+# or manually:
 docker-compose ps
 
 # should show: Up X minutes (healthy)
@@ -55,7 +108,6 @@ docker-compose ps
 
 ### next stages
 
-- [ ] stage 2: config reading with hot reload
 - [ ] stage 3: redirection to backend services
 - [ ] stage 4: enforce x-request-id header
 - [ ] stage 5: enforce api key authentication
@@ -65,5 +117,7 @@ docker-compose ps
 
 - **go 1.21** - main language
 - **chi router** - lightweight and powerful http routing
+- **fsnotify** - file system event notifications
+- **yaml** - configuration format
 - **docker** - containerization
 - **alpine linux** - minimal base image

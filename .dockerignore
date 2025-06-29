@@ -42,3 +42,6 @@ docker-compose*
 # Documentation
 README.md
 *.md
+
+# Config files (mounted as volumes)
+config.yaml

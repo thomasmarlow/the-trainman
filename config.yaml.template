@@ -1,0 +1,21 @@
+# API Gateway Configuration Template
+# Copy this file to config.yaml and customize as needed
+
+# Message displayed by the /ping endpoint
+message: "pong from config!"
+
+# Future configuration options will be added here as we implement more stages
+# Examples:
+# 
+# backend_services:
+#   - name: "service1"
+#     url: "http://localhost:3001"
+#     path: "/api/v1/*"
+#   - name: "service2"
+#     url: "http://localhost:3002"
+#     path: "/api/v2/*"
+#
+# auth:
+#   api_keys:
+#     - "your-api-key-here"
+#   require_request_id: true

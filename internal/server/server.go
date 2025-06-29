@@ -7,10 +7,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/thomasmarlow/the-trainman/internal/config"
 )
 
 type Server struct {
-	router chi.Router
+	router        chi.Router
+	configManager *config.Manager
 }
 
 type PingResponse struct {
@@ -18,9 +20,10 @@ type PingResponse struct {
 	Message string `json:"message"`
 }
 
-func NewServer() *Server {
+func NewServer(configManager *config.Manager) *Server {
 	s := &Server{
-		router: chi.NewRouter(),
+		router:        chi.NewRouter(),
+		configManager: configManager,
 	}
 
 	s.setupMiddleware()
@@ -40,9 +43,14 @@ func (s *Server) setupRoutes() {
 }
 
 func (s *Server) handlePing(w http.ResponseWriter, r *http.Request) {
+	message := "pong"
+	if s.configManager != nil {
+		message = s.configManager.GetMessage()
+	}
+
 	response := PingResponse{
 		Status:  "ok",
-		Message: "pong",
+		Message: message,
 	}
 
 	w.Header().Set("Content-Type", "application/json")
