@@ -152,6 +152,16 @@ curl http://localhost:8080/api/orders/status
 - [ ] stage 5: enforce api key authentication
 - [ ] stage 6: deploy on aws
 
+### extra tasks
+
+- [ ] start making releases
+- [ ] document the "why"s
+- [ ] clean up README, build changelog elsewhere
+- [ ] unit tests
+- [ ] update all dependencies to latest versions
+- [ ] more robust e2e testing framework
+- [ ] forward auth
+
 ### tech stack
 
 - **go 1.21** - main language
