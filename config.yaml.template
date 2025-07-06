@@ -4,19 +4,21 @@
 # Message displayed by the /ping endpoint
 message: "pong from config!"
 
+# Request ID enforcement configuration
+request_id:
+  require_request_id: false                   # Global enforcement (default: false)
+  override_service_settings: false           # If true, ignores per-service settings
+  error_message: "Missing required header: x-request-id"  # Customizable error message
+
 # Backend services configuration
 backend_services:
   - name: "users"
     url: "http://mock-users"
     enabled: true
+    require_request_id: true                  # This service requires x-request-id
   - name: "orders"
     url: "http://mock-orders"
     enabled: true
+    require_request_id: false                 # This service doesn't require x-request-id
 
 # Future configuration options will be added here as we implement more stages
-# Examples:
-#
-# auth:
-#   api_keys:
-#     - "your-api-key-here"
-#   require_request_id: true

@@ -139,28 +139,106 @@ make test-all
 make test-users
 make test-orders
 
-# manual testing
-curl http://localhost:8080/api/users/users
-curl http://localhost:8080/api/users/profile
+# test x-request-id enforcement
+make test-request-id
+
+# manual testing (note: users service now requires x-request-id header)
+curl -H "x-request-id: test-123" http://localhost:8080/api/users/users
+curl -H "x-request-id: test-123" http://localhost:8080/api/users/profile
 curl http://localhost:8080/api/orders/orders
 curl http://localhost:8080/api/orders/status
 ```
 
+## stage 4: x-request-id header enforcement ✅
+
+### implemented features
+
+- ✅ configurable x-request-id header enforcement per service
+- ✅ global enforcement setting with service-level override capability
+- ✅ customizable error messages for missing headers
+- ✅ detailed logging of rejected requests with ip tracking
+- ✅ hot reload support for enforcement configuration changes
+- ✅ backward compatibility with existing configurations
+
+### configuration structure
+
+the gateway now supports granular control over x-request-id enforcement:
+
+```yaml
+# global enforcement configuration
+request_id:
+  require_request_id: false                   # global enforcement (default: false)
+  override_service_settings: false           # if true, ignores per-service settings
+  error_message: "Missing required header: x-request-id"  # customizable error message
+
+# per-service enforcement configuration
+backend_services:
+  - name: "users"
+    url: "http://mock-users"
+    enabled: true
+    require_request_id: true                  # this service requires x-request-id
+  - name: "orders"
+    url: "http://mock-orders"
+    enabled: true
+    require_request_id: false                 # this service doesn't require x-request-id
+```
+
+### enforcement logic
+
+the system follows a hierarchical precedence model:
+
+1. **service override mode** (default): `override_service_settings: false`
+   - if service has `require_request_id` configured → use service setting
+   - if service doesn't have `require_request_id` configured → use global setting
+   - if service doesn't exist in config → use global setting
+
+2. **global override mode**: `override_service_settings: true`
+   - always use global `require_request_id` setting
+   - ignores all per-service configurations
+
+### testing x-request-id enforcement
+
+```bash
+# test x-request-id enforcement scenarios
+make test-request-id
+
+# test with header (should pass)
+curl -H "x-request-id: test-123" http://localhost:8080/api/users/users
+
+# test without header on service that requires it (should fail with 400)
+curl http://localhost:8080/api/users/users
+# expected response: Missing required header: x-request-id
+
+# test without header on service that doesn't require it (should pass)
+curl http://localhost:8080/api/orders/orders
+
+# ping endpoint is never affected by x-request-id enforcement
+curl http://localhost:8080/ping
+```
+
+### enforcement behavior
+
+- **scope**: only applies to `/api/{service}/*` routes, never to `/ping`
+- **validation**: occurs before proxy forwarding to backend services
+- **response**: 400 bad request with configurable error message
+- **logging**: detailed rejection logs include service name and client ip
+- **hot reload**: configuration changes apply immediately without restart
+
 ### next stages
 
-- [ ] stage 4: enforce x-request-id header
 - [ ] stage 5: enforce api key authentication
 - [ ] stage 6: deploy on aws
 
 ### extra tasks
 
-- [ ] start making releases
 - [ ] document the "why"s
 - [ ] clean up README, build changelog elsewhere
-- [ ] unit tests
-- [ ] update all dependencies to latest versions
-- [ ] more robust e2e testing framework
 - [ ] forward auth
+- [ ] more robust e2e testing framework
+- [ ] metrics and monitoring endpoints
+- [ ] rate limiting per service
+- [ ] circuit breaker
+- [ ] update all dependencies to latest versions
 
 ### tech stack
 

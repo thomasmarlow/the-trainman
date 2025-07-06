@@ -1,20 +1,21 @@
-.PHONY: help start stop restart build logs setup-config clean test test-proxy test-users test-orders test-all
+.PHONY: help start stop restart build logs setup-config clean test test-proxy test-users test-orders test-all test-request-id
 
 # Default target
 help:
 	@echo "Available commands:"
-	@echo "  setup-config  - Create config.yaml from template"
-	@echo "  start         - Start the API Gateway"
-	@echo "  stop          - Stop the API Gateway"
-	@echo "  restart       - Restart the API Gateway"
-	@echo "  build         - Build the Docker image"
-	@echo "  logs          - Show container logs"
-	@echo "  test          - Test the /ping endpoint"
-	@echo "  test-proxy    - Test proxy functionality"
-	@echo "  test-users    - Test users service proxy"
-	@echo "  test-orders   - Test orders service proxy"
-	@echo "  test-all      - Run all tests"
-	@echo "  clean         - Remove containers and images"
+	@echo "  setup-config    - Create config.yaml from template"
+	@echo "  start           - Start the API Gateway"
+	@echo "  stop            - Stop the API Gateway"
+	@echo "  restart         - Restart the API Gateway"
+	@echo "  build           - Build the Docker image"
+	@echo "  logs            - Show container logs"
+	@echo "  test            - Test the /ping endpoint"
+	@echo "  test-proxy      - Test proxy functionality"
+	@echo "  test-users      - Test users service proxy"
+	@echo "  test-orders     - Test orders service proxy"
+	@echo "  test-request-id - Test x-request-id enforcement"
+	@echo "  test-all        - Run all tests"
+	@echo "  clean           - Remove containers and images"
 
 # Setup configuration from template
 setup-config:
@@ -73,7 +74,7 @@ health:
 test-proxy:
 	@echo "🧪 Testing proxy functionality..."
 	@echo "Testing users service..."
-	@curl -s http://localhost:8080/api/users/users | jq . || echo "❌ Users test failed"
+	@curl -s -H "x-request-id: test-123" http://localhost:8080/api/users/users | jq . || echo "❌ Users test failed"
 	@echo "Testing orders service..."
 	@curl -s http://localhost:8080/api/orders/orders | jq . || echo "❌ Orders test failed"
 
@@ -81,9 +82,9 @@ test-proxy:
 test-users:
 	@echo "🧪 Testing users service endpoints..."
 	@echo "GET /api/users/users:"
-	@curl -s http://localhost:8080/api/users/users | jq . || echo "❌ Failed"
+	@curl -s -H "x-request-id: test-123" http://localhost:8080/api/users/users | jq . || echo "❌ Failed"
 	@echo "GET /api/users/profile:"
-	@curl -s http://localhost:8080/api/users/profile | jq . || echo "❌ Failed"
+	@curl -s -H "x-request-id: test-123" http://localhost:8080/api/users/profile | jq . || echo "❌ Failed"
 
 # Test orders service endpoints
 test-orders:
@@ -96,3 +97,15 @@ test-orders:
 # Run all tests
 test-all: test test-users test-orders
 	@echo "✅ All tests completed"
+
+# Test x-request-id enforcement
+test-request-id:
+	@echo "🧪 Testing x-request-id enforcement..."
+	@echo "1. Testing with header (should pass):"
+	@curl -s -H "x-request-id: test-123" http://localhost:8080/api/users/users | jq . || echo "❌ Failed"
+	@echo "2. Testing without header on users service (should fail with 400):"
+	@curl -s -w "Status: %{http_code}\n" http://localhost:8080/api/users/users || echo "Expected failure"
+	@echo "3. Testing without header on orders service (should pass):"
+	@curl -s http://localhost:8080/api/orders/orders | jq . || echo "❌ Failed"
+	@echo "4. Testing ping endpoint (should always pass):"
+	@curl -s http://localhost:8080/ping | jq . || echo "❌ Failed"

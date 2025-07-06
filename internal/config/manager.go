@@ -10,15 +10,23 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type RequestIDConfig struct {
+	RequireRequestID        bool   `yaml:"require_request_id"`
+	OverrideServiceSettings bool   `yaml:"override_service_settings"`
+	ErrorMessage            string `yaml:"error_message"`
+}
+
 type Config struct {
 	Message         string           `yaml:"message"`
+	RequestID       RequestIDConfig  `yaml:"request_id"`
 	BackendServices []BackendService `yaml:"backend_services"`
 }
 
 type BackendService struct {
-	Name    string `yaml:"name"`
-	URL     string `yaml:"url"`
-	Enabled bool   `yaml:"enabled"`
+	Name             string `yaml:"name"`
+	URL              string `yaml:"url"`
+	Enabled          bool   `yaml:"enabled"`
+	RequireRequestID *bool  `yaml:"require_request_id,omitempty"`
 }
 
 type Manager struct {
@@ -64,6 +72,10 @@ func (m *Manager) LoadConfig() error {
 	var newConfig Config
 	if err := yaml.Unmarshal(data, &newConfig); err != nil {
 		return err
+	}
+
+	if newConfig.RequestID.ErrorMessage == "" {
+		newConfig.RequestID.ErrorMessage = "Missing required header: x-request-id"
 	}
 
 	m.mu.Lock()
@@ -166,4 +178,47 @@ func (m *Manager) Stop() error {
 		return m.watcher.Close()
 	}
 	return nil
+}
+
+func (m *Manager) GetRequestIDConfig() RequestIDConfig {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.config.RequestID
+}
+
+func (m *Manager) ShouldRequireRequestID(serviceName string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	globalConfig := m.config.RequestID
+
+	// si override_service_settings está en true, usar solo el global
+	if globalConfig.OverrideServiceSettings {
+		return globalConfig.RequireRequestID
+	}
+
+	// buscar configuración específica del service
+	for _, service := range m.config.BackendServices {
+		if service.Name == serviceName {
+			// si el service tiene configuración específica, usarla
+			if service.RequireRequestID != nil {
+				return *service.RequireRequestID
+			}
+			// si no tiene configuración específica, usar global como default
+			return globalConfig.RequireRequestID
+		}
+	}
+
+	// si no se encuentra el service, usar global como fallback
+	return globalConfig.RequireRequestID
+}
+
+func (m *Manager) GetRequestIDErrorMessage() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.config.RequestID.ErrorMessage == "" {
+		return "Missing required header: x-request-id"
+	}
+	return m.config.RequestID.ErrorMessage
 }

@@ -36,6 +36,20 @@ func (h *Handler) HandleProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Check x-request-id header if enforcement is enabled
+	if h.configManager.ShouldRequireRequestID(serviceName) {
+		requestID := r.Header.Get("x-request-id")
+		if requestID == "" {
+			// Log detailed rejection information
+			log.Printf("request rejected: missing x-request-id header for service '%s' from IP %s",
+				serviceName, r.RemoteAddr)
+
+			errorMsg := h.configManager.GetRequestIDErrorMessage()
+			http.Error(w, errorMsg, http.StatusBadRequest)
+			return
+		}
+	}
+
 	// Get the remaining path after /api/{service}/
 	fullPath := r.URL.Path
 	prefix := fmt.Sprintf("/api/%s/", serviceName)
