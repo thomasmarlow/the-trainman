@@ -224,13 +224,102 @@ curl http://localhost:8080/ping
 - **logging**: detailed rejection logs include service name and client ip
 - **hot reload**: configuration changes apply immediately without restart
 
+## stage 5: x-api-key header enforcement ✅
+
+### implemented features
+
+- ✅ configurable x-api-key header enforcement per service
+- ✅ single global api key validation with configurable value
+- ✅ global enforcement setting with service-level override capability
+- ✅ customizable error messages for missing and invalid api keys
+- ✅ detailed logging of rejected requests with ip tracking
+- ✅ hot reload support for api key configuration changes
+- ✅ backward compatibility with existing configurations
+
+### configuration structure
+
+the gateway now supports granular control over x-api-key enforcement:
+
+```yaml
+# global api key enforcement configuration
+api_key:
+  api_key: "your-secret-api-key-here"                  # the valid api key
+  require_api_key: false                               # global enforcement (default: false)
+  override_service_settings: false                     # if true, ignores per-service settings
+  error_message: "Missing required header: x-api-key"  # customizable error message
+
+# per-service api key enforcement configuration
+backend_services:
+  - name: "users"
+    url: "http://mock-users"
+    enabled: true
+    require_request_id: true                  # this service requires x-request-id
+    require_api_key: true                     # this service requires x-api-key
+  - name: "orders"
+    url: "http://mock-orders"
+    enabled: true
+    require_request_id: false                 # this service doesn't require x-request-id
+    require_api_key: false                    # this service doesn't require x-api-key
+```
+
+### enforcement logic
+
+the system follows the same hierarchical precedence model as x-request-id:
+
+1. **service override mode** (default): `override_service_settings: false`
+   - if service has `require_api_key` configured → use service setting
+   - if service doesn't have `require_api_key` configured → use global setting
+   - if service doesn't exist in config → use global setting
+
+2. **global override mode**: `override_service_settings: true`
+   - always use global `require_api_key` setting
+   - ignores all per-service configurations
+
+### testing x-api-key enforcement
+
+```bash
+# test x-api-key enforcement scenarios
+make test-api-key
+
+# detailed testing scenarios
+make test-api-key-detailed
+
+# test with valid api key (should pass)
+curl -H "x-api-key: your-secret-api-key-here" http://localhost:8080/api/users/profile
+
+# test without api key on service that requires it (should fail with 400)
+curl http://localhost:8080/api/users/profile
+# expected response: Missing required header: x-api-key
+
+# test with invalid api key on service that requires it (should fail with 401)
+curl -H "x-api-key: wrong-key" http://localhost:8080/api/users/profile
+# expected response: Invalid API key
+
+# test without api key on service that doesn't require it (should pass)
+curl http://localhost:8080/api/orders/list
+
+# ping endpoint is never affected by x-api-key enforcement
+curl http://localhost:8080/ping
+```
+
+### enforcement behavior
+
+- **scope**: only applies to `/api/{service}/*` routes, never to `/ping`
+- **validation**: occurs after x-request-id validation, before proxy forwarding
+- **response codes**: 
+  - 400 bad request for missing x-api-key header
+  - 401 unauthorized for invalid x-api-key value
+- **logging**: detailed rejection logs include service name and client ip
+- **hot reload**: configuration changes apply immediately without restart
+- **security**: api key value is stored in configuration, not logged in rejection messages
+
 ### next stages
 
-- [ ] stage 5: enforce api key authentication
 - [ ] stage 6: deploy on aws
 
 ### extra tasks
 
+- [ ] make invalid api key message configurable
 - [ ] document the "why"s
 - [ ] clean up README, build changelog elsewhere
 - [ ] forward auth

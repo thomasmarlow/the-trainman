@@ -50,6 +50,29 @@ func (h *Handler) HandleProxy(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// Check x-api-key header if enforcement is enabled
+	if h.configManager.ShouldRequireAPIKey(serviceName) {
+		apiKey := r.Header.Get("x-api-key")
+		if apiKey == "" {
+			// Log detailed rejection information
+			log.Printf("request rejected: missing x-api-key header for service '%s' from IP %s",
+				serviceName, r.RemoteAddr)
+
+			errorMsg := h.configManager.GetAPIKeyErrorMessage()
+			http.Error(w, errorMsg, http.StatusBadRequest)
+			return
+		}
+
+		if !h.configManager.IsValidAPIKey(apiKey) {
+			// Log detailed rejection information
+			log.Printf("request rejected: invalid x-api-key for service '%s' from IP %s",
+				serviceName, r.RemoteAddr)
+
+			http.Error(w, "Invalid API key", http.StatusUnauthorized)
+			return
+		}
+	}
+
 	// Get the remaining path after /api/{service}/
 	fullPath := r.URL.Path
 	prefix := fmt.Sprintf("/api/%s/", serviceName)

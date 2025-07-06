@@ -6,9 +6,16 @@ message: "pong from config!"
 
 # Request ID enforcement configuration
 request_id:
-  require_request_id: false                   # Global enforcement (default: false)
-  override_service_settings: false           # If true, ignores per-service settings
+  require_request_id: false                               # Global enforcement (default: false)
+  override_service_settings: false                        # If true, ignores per-service settings
   error_message: "Missing required header: x-request-id"  # Customizable error message
+
+# API Key enforcement configuration
+api_key:
+  api_key: "your-secret-api-key-here"                  # The valid API key
+  require_api_key: false                               # Global enforcement (default: false)
+  override_service_settings: false                     # If true, ignores per-service settings
+  error_message: "Missing required header: x-api-key"  # Customizable error message
 
 # Backend services configuration
 backend_services:
@@ -16,9 +23,11 @@ backend_services:
     url: "http://mock-users"
     enabled: true
     require_request_id: true                  # This service requires x-request-id
+    require_api_key: true                     # This service requires x-api-key
   - name: "orders"
     url: "http://mock-orders"
     enabled: true
     require_request_id: false                 # This service doesn't require x-request-id
+    require_api_key: false                    # This service doesn't require x-api-key
 
 # Future configuration options will be added here as we implement more stages

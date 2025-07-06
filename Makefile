@@ -1,21 +1,23 @@
-.PHONY: help start stop restart build logs setup-config clean test test-proxy test-users test-orders test-all test-request-id
+.PHONY: help start stop restart build logs setup-config clean test test-proxy test-users test-orders test-all test-request-id test-api-key test-api-key-detailed
 
 # Default target
 help:
 	@echo "Available commands:"
-	@echo "  setup-config    - Create config.yaml from template"
-	@echo "  start           - Start the API Gateway"
-	@echo "  stop            - Stop the API Gateway"
-	@echo "  restart         - Restart the API Gateway"
-	@echo "  build           - Build the Docker image"
-	@echo "  logs            - Show container logs"
-	@echo "  test            - Test the /ping endpoint"
-	@echo "  test-proxy      - Test proxy functionality"
-	@echo "  test-users      - Test users service proxy"
-	@echo "  test-orders     - Test orders service proxy"
-	@echo "  test-request-id - Test x-request-id enforcement"
-	@echo "  test-all        - Run all tests"
-	@echo "  clean           - Remove containers and images"
+	@echo "  setup-config    	   - Create config.yaml from template"
+	@echo "  start           	   - Start the API Gateway"
+	@echo "  stop            	   - Stop the API Gateway"
+	@echo "  restart         	   - Restart the API Gateway"
+	@echo "  build           	   - Build the Docker image"
+	@echo "  logs            	   - Show container logs"
+	@echo "  test            	   - Test the /ping endpoint"
+	@echo "  test-proxy      	   - Test proxy functionality"
+	@echo "  test-users      	   - Test users service proxy"
+	@echo "  test-orders     	   - Test orders service proxy"
+	@echo "  test-request-id 	   - Test x-request-id enforcement"
+	@echo "  test-api-key    	   - Test x-api-key enforcement"
+	@echo "  test-api-key-detailed - Detailed x-api-key testing"
+	@echo "  test-all        	   - Run all tests"
+	@echo "  clean           	   - Remove containers and images"
 
 # Setup configuration from template
 setup-config:
@@ -109,3 +111,27 @@ test-request-id:
 	@curl -s http://localhost:8080/api/orders/orders | jq . || echo "❌ Failed"
 	@echo "4. Testing ping endpoint (should always pass):"
 	@curl -s http://localhost:8080/ping | jq . || echo "❌ Failed"
+
+# Test x-api-key enforcement
+test-api-key:
+	@echo "🧪 Testing x-api-key enforcement..."
+	@echo "1. Testing without x-api-key (should fail for users):"
+	@curl -s -w "\nStatus: %{http_code}\n" -H "x-request-id: test-123" http://localhost:8080/api/users/profile || echo "Expected failure"
+	@echo "2. Testing with invalid x-api-key (should fail for users):"
+	@curl -s -w "\nStatus: %{http_code}\n" -H "x-request-id: test-123" -H "x-api-key: invalid-key" http://localhost:8080/api/users/profile || echo "Expected failure"
+	@echo "3. Testing with valid x-api-key (should succeed for users):"
+	@curl -s -w "\nStatus: %{http_code}\n" -H "x-request-id: test-123" -H "x-api-key: your-secret-api-key-here" http://localhost:8080/api/users/profile || echo "❌ Failed"
+	@echo "4. Testing orders service (no x-api-key required):"
+	@curl -s -w "\nStatus: %{http_code}\n" http://localhost:8080/api/orders/orders || echo "❌ Failed"
+
+# Detailed x-api-key testing scenarios
+test-api-key-detailed:
+	@echo "🧪 Detailed x-api-key testing scenarios..."
+	@echo "Testing service with API key required:"
+	@curl -s -w "\nStatus: %{http_code}\n" -H "x-request-id: test-123" -H "x-api-key: your-secret-api-key-here" http://localhost:8080/api/users/profile || echo "❌ Failed"
+	@echo "\nTesting service without API key required:"
+	@curl -s -w "\nStatus: %{http_code}\n" http://localhost:8080/api/orders/orders || echo "❌ Failed"
+	@echo "\nTesting missing API key on required service:"
+	@curl -s -w "\nStatus: %{http_code}\n" -H "x-request-id: test-123" http://localhost:8080/api/users/profile || echo "Expected failure"
+	@echo "\nTesting invalid API key on required service:"
+	@curl -s -w "\nStatus: %{http_code}\n" -H "x-request-id: test-123" -H "x-api-key: wrong-key" http://localhost:8080/api/users/profile || echo "Expected failure"

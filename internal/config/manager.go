@@ -16,9 +16,17 @@ type RequestIDConfig struct {
 	ErrorMessage            string `yaml:"error_message"`
 }
 
+type APIKeyConfig struct {
+	APIKey                  string `yaml:"api_key"`
+	RequireAPIKey           bool   `yaml:"require_api_key"`
+	OverrideServiceSettings bool   `yaml:"override_service_settings"`
+	ErrorMessage            string `yaml:"error_message"`
+}
+
 type Config struct {
 	Message         string           `yaml:"message"`
 	RequestID       RequestIDConfig  `yaml:"request_id"`
+	APIKey          APIKeyConfig     `yaml:"api_key"`
 	BackendServices []BackendService `yaml:"backend_services"`
 }
 
@@ -27,6 +35,7 @@ type BackendService struct {
 	URL              string `yaml:"url"`
 	Enabled          bool   `yaml:"enabled"`
 	RequireRequestID *bool  `yaml:"require_request_id,omitempty"`
+	RequireAPIKey    *bool  `yaml:"require_api_key,omitempty"`
 }
 
 type Manager struct {
@@ -76,6 +85,10 @@ func (m *Manager) LoadConfig() error {
 
 	if newConfig.RequestID.ErrorMessage == "" {
 		newConfig.RequestID.ErrorMessage = "Missing required header: x-request-id"
+	}
+
+	if newConfig.APIKey.ErrorMessage == "" {
+		newConfig.APIKey.ErrorMessage = "Missing required header: x-api-key"
 	}
 
 	m.mu.Lock()
@@ -221,4 +234,54 @@ func (m *Manager) GetRequestIDErrorMessage() string {
 		return "Missing required header: x-request-id"
 	}
 	return m.config.RequestID.ErrorMessage
+}
+
+func (m *Manager) GetAPIKeyConfig() APIKeyConfig {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.config.APIKey
+}
+
+func (m *Manager) ShouldRequireAPIKey(serviceName string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	globalConfig := m.config.APIKey
+
+	// si override_service_settings está en true, usar solo el global
+	if globalConfig.OverrideServiceSettings {
+		return globalConfig.RequireAPIKey
+	}
+
+	// buscar configuración específica del service
+	for _, service := range m.config.BackendServices {
+		if service.Name == serviceName {
+			// si el service tiene configuración específica, usarla
+			if service.RequireAPIKey != nil {
+				return *service.RequireAPIKey
+			}
+			// si no tiene configuración específica, usar global como default
+			return globalConfig.RequireAPIKey
+		}
+	}
+
+	// si no se encuentra el service, usar global como fallback
+	return globalConfig.RequireAPIKey
+}
+
+func (m *Manager) GetAPIKeyErrorMessage() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.config.APIKey.ErrorMessage == "" {
+		return "Missing required header: x-api-key"
+	}
+	return m.config.APIKey.ErrorMessage
+}
+
+func (m *Manager) IsValidAPIKey(providedKey string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.config.APIKey.APIKey != "" && m.config.APIKey.APIKey == providedKey
 }
