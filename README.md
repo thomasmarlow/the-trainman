@@ -313,9 +313,18 @@ curl http://localhost:8080/ping
 - **hot reload**: configuration changes apply immediately without restart
 - **security**: api key value is stored in configuration, not logged in rejection messages
 
-### next stages
+## stage 6: deploy on aws ✅
 
-- [ ] stage 6: deploy on aws
+- single t2.micro ec2 instance
+- fqdn: `the-trainman-demo.thomasmarlow.dev`
+
+### try it out
+
+```bash
+curl http://the-trainman-demo.thomasmarlow.dev/api/orders/orders/1 \
+  -H 'x-request-id: 123' \
+  -H 'x-api-key: ExampleAPIKey'
+```
 
 ### extra tasks
 
